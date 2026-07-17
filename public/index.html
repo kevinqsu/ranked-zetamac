@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Ranked Zetamac</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link
+      href="https://unpkg.com/tailwindcss@^2/dist/tailwind.min.css"
+      rel="stylesheet"
+    />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.1/chart.min.js" integrity="sha512-QSkVNOCYLtj73J4hbmVoOV6KVZuMluZlioC+trLpewV8qMjsWqlIQvkn1KGX2StWvPMdWGBqim1xlC8krl1EKQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  </head>
+  <body class="text-gray-700 h-screen flex flex-col">
+    <div class="w-full bg-indigo-300 px-8 py-4 flex shadow-lg">
+      <div class="text-left text-xl md:text-2xl font-light flex-grow">Ranked Zetamac</div>
+      <div class="text-right my-auto" id="online">0</div>
+    </div>
+    <div class="flex flex-grow">
+      <div
+        class="w-72 bg-blue-100 p-4 hidden sm:flex flex-col justify-between"
+      >
+        <div class="text-xl mb-2 text-center">Challenges</div>
+        <div class="grid grid-cols-1 gap-2 mb-6" id="challenges"></div>
+        <div class="text-xl mb-2 text-center">Spectate</div>
+        <div class="grid grid-cols-1 gap-2 mb-auto" id="games"></div>
+        <div class="button mx-auto px-4 py-2 mb-2 bg-blue-200 rounded-md shadow-sm cursor-pointer hover:bg-blue-300" onclick="enable_speech()" id="enable-speech">
+            Enable Speech
+        </div>
+        <div class="text-center">
+          <div id="high-score"></div>
+        </div>
+      </div>
+      <div id="parent" class="flex flex-col w-full">
+        <div id="start" class="flex flex-grow">
+          <div class="m-auto w-full max-w-md flex flex-col gap-4 p-6">
+            <input
+              id="player"
+              class="border-blue-400 py-2 px-4 bg-white rounded-lg placeholder-gray-400 text-gray-900 focus:outline-none border-2 focus:border-blue-600"
+              placeholder="Your name here"
+            />
+            <div>
+              <div class="text-sm text-gray-500 mb-1">Time</div>
+              <div class="grid grid-cols-3 gap-2">
+                <button id="time-60" onclick="select_time(60)" class="px-4 py-2 rounded-lg border-2 border-blue-300 focus:outline-none">60s</button>
+                <button id="time-120" onclick="select_time(120)" class="px-4 py-2 rounded-lg border-2 border-blue-300 focus:outline-none">120s</button>
+                <button id="time-240" onclick="select_time(240)" class="px-4 py-2 rounded-lg border-2 border-blue-300 focus:outline-none">240s</button>
+              </div>
+            </div>
+            <div>
+              <div class="text-sm text-gray-500 mb-1">Difficulty</div>
+              <div class="grid grid-cols-3 gap-2">
+                <button id="diff-easy" onclick="select_diff('easy')" class="px-4 py-2 rounded-lg border-2 border-green-400 text-green-600 font-semibold focus:outline-none">Easy</button>
+                <button id="diff-medium" onclick="select_diff('medium')" class="px-4 py-2 rounded-lg border-2 border-yellow-400 text-yellow-600 font-semibold focus:outline-none">Medium</button>
+                <button id="diff-hard" onclick="select_diff('hard')" class="px-4 py-2 rounded-lg border-2 border-red-400 text-red-600 font-semibold focus:outline-none">Hard</button>
+              </div>
+              <div id="diff-info" class="mt-2 text-sm text-center rounded-lg p-3"></div>
+            </div>
+            <button onclick="play()" class="bg-blue-500 text-white text-lg px-4 py-2 rounded-lg hover:bg-blue-600 shadow-md">
+              Play
+            </button>
+          </div>
+        </div>
+        <div>
+          <div id="game" class="hidden w-full flex flex-grow">
+            <div class="flex bg-red-100 text-3xl text-center py-4 mb-4 text-bold place-items-center justify-center">
+              <div id="banner">
+                Waiting for opponent...
+              </div>
+              <button id="new-game" class="hidden bg-red-300 px-4 py-2 ml-4 rounded-xl hover:bg-red-400 shadow-md" onclick="startGame()">New Game</button>
+              <button id="cancel-challenge" class="hidden bg-red-300 px-4 py-2 ml-4 rounded-xl hover:bg-red-400 shadow-md" onclick="cancel_challenge()">Cancel</button>
+            </div>
+            <div class="relative mt-4 px-4">
+              <div id="mine" class="mx-auto flex flex-col w-full max-w-lg text-center">
+                <div class="mb-6 flex flex-col text-center text-3xl text-light w-full bg-blue-200 rounded-lg py-3 px-4">
+                  <div id="name1" class=""></div>
+                  <div id="score1" class="text-8xl font-bold">0</div>
+                </div>
+
+                <div class="flex flex-row items-center justify-center">
+                  <div class="flex mr-6 my-auto text-5xl">
+                    <div id="question1">? + ?</div>
+                    <span class="ml-3">=</span>
+                  </div>
+                  <input
+                    id="text1"
+                    readonly
+                    class="w-40 text-3xl text-center border-blue-400 py-2 px-4 bg-white rounded-lg placeholder-gray-400 text-gray-900 focus:outline-none border-2 focus:border-blue-600"
+                  />
+                </div>
+              </div>
+              <div id="theirs" class="md:absolute md:right-8 md:top-0 md:w-44 w-48 mx-auto mt-8 md:mt-0 flex flex-col opacity-75">
+                <div class="mb-3 flex flex-col text-center text-lg text-light w-full bg-blue-200 rounded-lg py-2 px-3">
+                  <div id="name2" class="">Waiting...</div>
+                  <div id="score2" class="text-4xl font-bold">0</div>
+                </div>
+
+                <div class="flex flex-row items-center">
+                  <div class="flex mr-2 my-auto text-base">
+                    <div id="question2">? + ?</div>
+                    <span class="ml-1">=</span>
+                  </div>
+                  <input
+                          id="text2"
+                          readonly
+                          class="flex-grow w-16 text-sm border-red-400 py-1 px-2 bg-white rounded-lg placeholder-gray-400 text-gray-900 focus:outline-none border-2 focus:border-blue-600"
+                  />
+                </div>
+              </div>
+            </div>
+            <div class="mt-8 mx-auto w-2/3">
+              <div class="text-right mb-1">
+                <button id="toggle-graph" onclick="toggle_graph()" class="px-3 py-1 text-sm bg-gray-200 rounded-md hover:bg-gray-300 shadow-sm">Hide graph</button>
+              </div>
+              <div id="graph-wrap"><canvas id="graph"></canvas></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="bg-indigo-300 w-full px-4 py-2 text-center grid-cols-3 hidden md:grid">
+      <div>
+        Created by
+        <a href="https://github.com/kevinqsu" target="_blank" class="underline text-blue-700">Vel Kuppusamy</a>,
+        inspired by
+        <a href="https://github.com/sunnyguan/zetamac-multiplayer" target="_blank" class="underline text-blue-700">Sunny Guan</a>
+      </div>
+      <div>
+        View project on
+        <a href="https://github.com/kevinqsu/ranked-zetamac" target="_blank" class="underline text-blue-700">GitHub</a>
+      </div>
+      <div>
+        Play single-player
+        <a href="https://arithmetic.zetamac.com/" target="_blank" class="underline text-blue-700">Zetamac</a>
+      </div>
+    </div>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/annyang/2.6.0/annyang.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/game.js"></script>
+  </body>
+</html>
