@@ -14,7 +14,7 @@ var HIGHSCORE_FILE = path.join(__dirname, "highscore.json");
 
 var TIMES = [30, 60, 120];
 var DIFFICULTIES = ["easy", "medium", "hard"];
-var MAX_SCORE = 500; // any reported score above this is treated as cheating
+var MAX_SCORE = 150; // any reported score above this is treated as cheating
 
 var players = {};    // socket.id -> player state
 var games = {};      // "player 1" socket.id -> game info
