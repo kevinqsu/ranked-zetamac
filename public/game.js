@@ -54,9 +54,6 @@ var score2 = document.getElementById("score2");
 var name1 = document.getElementById("name1");
 var name2 = document.getElementById("name2");
 
-var speech_button = document.getElementById("enable-speech");
-var speech = 0;
-
 var banner = document.getElementById("banner");
 var game = document.getElementById("game");
 var startEl = document.getElementById("start");
@@ -212,46 +209,6 @@ function reset_chart(newCap) {
 }
 
 reset_chart(cap);
-
-//// speech
-
-function digitRead(input) {
-    if (textbox1.readOnly) {
-        console.log("game has not been started yet!");
-    } else {
-        var lower = input.toLowerCase().replaceAll(" ", "");
-        textbox1.value += lower;
-        inputEvent({});
-    }
-}
-
-function start_speech() {
-    var commands = {
-        ":digit": {
-            regexp: /^((?:(?:\d) *)+)$/,
-            callback: digitRead,
-        },
-        no: function() {
-            textbox1.value = "";
-        },
-    };
-    annyang.addCommands(commands);
-    annyang.start();
-}
-
-function enable_speech() {
-    if (annyang) {
-        if (speech === 1) {
-            annyang.abort();
-            speech = -1;
-            speech_button.textContent = "Enable Speech";
-        } else {
-            start_speech();
-            speech = 1;
-            speech_button.textContent = "Disable Speech";
-        }
-    }
-}
 
 //// playing
 
