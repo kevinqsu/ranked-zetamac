@@ -263,13 +263,7 @@ addEventListener("keydown", function(event) {
 });
 
 function play() {
-    var name = playerInput.value.trim();
-    if (!name) {
-        playerInput.classList.add("border-red-500");
-        playerInput.focus();
-        return;
-    }
-    playerInput.classList.remove("border-red-500");
+    var name = playerInput.value.trim() || "Guest";
     playerName = name;
     lastName = name;
     spectating = -1;
@@ -320,13 +314,7 @@ function leave_spectate() {
 function accept_challenge(id) {
     if (spectating === 1) return;
     if (startEl.classList.contains("hidden")) return; // already waiting or playing
-    var name = playerInput.value.trim();
-    if (!name) {
-        playerInput.classList.add("border-red-500");
-        playerInput.focus();
-        return;
-    }
-    playerInput.classList.remove("border-red-500");
+    var name = playerInput.value.trim() || "Guest";
     playerName = name;
     lastName = name;
     spectating = -1;
