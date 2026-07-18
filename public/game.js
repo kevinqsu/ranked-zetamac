@@ -20,7 +20,7 @@ var lastName = "guest";
 // pre-match settings (challenger's settings are used for the match)
 var settings = { time: 120, difficulty: "medium" };
 
-var TIME_OPTS = [60, 120, 240];
+var TIME_OPTS = [30, 60, 120];
 var DIFF_META = {
     easy: {
         color: "green",
@@ -62,6 +62,9 @@ var game = document.getElementById("game");
 var startEl = document.getElementById("start");
 var newGame = document.getElementById("new-game");
 var cancelBtn = document.getElementById("cancel-challenge");
+var rematchBtn = document.getElementById("rematch");
+var mainMenuBtn = document.getElementById("main-menu");
+var leaveBtn = document.getElementById("leave-spectate");
 var playerInput = document.getElementById("player");
 var diffInfo = document.getElementById("diff-info");
 
@@ -134,8 +137,16 @@ function show_start() {
     startEl.classList.remove("hidden");
 }
 
-function reset_board() {
+function hide_end_buttons() {
     newGame.style.display = "none";
+    mainMenuBtn.style.display = "none";
+    rematchBtn.style.display = "none";
+    rematchBtn.disabled = false;
+    rematchBtn.textContent = "Rematch";
+}
+
+function reset_board() {
+    hide_end_buttons();
     textbox1.value = "";
     textbox2.value = "";
     name2.textContent = "Waiting...";
@@ -283,6 +294,29 @@ function cancel_challenge() {
     show_start();
 }
 
+function main_menu() {
+    socket.emit("main menu");
+    hide_end_buttons();
+    opponentId = -1;
+    show_start();
+}
+
+function request_rematch() {
+    socket.emit("rematch");
+    rematchBtn.disabled = true;
+    rematchBtn.textContent = "Rematch requested...";
+}
+
+function leave_spectate() {
+    socket.emit("stop spectate");
+    spectating = 0;
+    spec_id1 = -1;
+    spec_id2 = -1;
+    leaveBtn.style.display = "none";
+    textbox1.readOnly = true;
+    show_start();
+}
+
 function accept_challenge(id) {
     if (spectating === 1) return;
     if (startEl.classList.contains("hidden")) return; // already waiting or playing
@@ -402,6 +436,18 @@ socket.on("spectate started", function(data) {
     startEl.classList.add("hidden");
     game.style.display = "block";
     textbox2.type = "text";
+    leaveBtn.style.display = "block";
+});
+
+socket.on("rematch requested", function() {
+    if (!rematchBtn.disabled) {
+        rematchBtn.textContent = "Rematch? (opponent is ready)";
+    }
+});
+
+socket.on("opponent left", function() {
+    rematchBtn.disabled = true;
+    rematchBtn.textContent = "Opponent left";
 });
 
 socket.on("update games", function(data) {
@@ -486,8 +532,9 @@ socket.on("tick", function(data) {
         textbox1.readOnly = true;
         set_graph_hidden(false); // graph pops up when the game finishes
         if (spectating !== 1) {
+            rematchBtn.style.display = "block";
             newGame.style.display = "block";
-            socket.emit("game end");
+            mainMenuBtn.style.display = "block";
         }
     } else {
         banner.textContent = time + "";

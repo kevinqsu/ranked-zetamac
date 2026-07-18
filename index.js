@@ -12,11 +12,12 @@ var host = process.env.HOST || "0.0.0.0";
 
 var HIGHSCORE_FILE = path.join(__dirname, "highscore.json");
 
-var TIMES = [60, 120, 240];
+var TIMES = [30, 60, 120];
 var DIFFICULTIES = ["easy", "medium", "hard"];
+var MAX_SCORE = 500; // any reported score above this is treated as cheating
 
 var players = {};    // socket.id -> player state
-var games = {};      // challenger socket.id -> game info
+var games = {};      // "player 1" socket.id -> game info
 var challenges = {}; // challenger socket.id -> open challenge
 var online = 0;
 
@@ -46,14 +47,79 @@ function update_challenges() {
 }
 
 function record_result(p1, p2) {
+    var changed = false;
     [p1, p2].forEach(function(p) {
         var s = parseInt(p.score) || 0;
-        if (s > (highScore.score || 0)) {
+        if (!p.cheated && s <= MAX_SCORE && s > (highScore.score || 0)) {
             highScore = { score: s, player: p.name };
+            changed = true;
         }
     });
-    save_high_score();
-    io.emit("highScore", highScore);
+    if (changed) {
+        save_high_score();
+        io.emit("highScore", highScore);
+    }
+}
+
+function start_match(id1, id2, cap, difficulty) {
+    var p1 = players[id1], p2 = players[id2];
+    if (!p1 || !p2) return;
+
+    [p1, p2].forEach(function(p) {
+        p.text = "";
+        p.question = "";
+        p.score = "0";
+        p.cheated = false;
+        p.wantsRematch = false;
+        p.matchCap = cap;
+        p.matchDifficulty = difficulty;
+    });
+    p1.opponent = id2;
+    p2.opponent = id1;
+
+    var questions = generate_questions(cap * 3, difficulty);
+
+    games[id1] = {
+        name1: p2.name,
+        name2: p1.name,
+        id2: id2,
+        cap: cap,
+        difficulty: difficulty,
+        spectators: (games[id1] && games[id1].spectators) || []
+    };
+    update_games();
+
+    io.to(id1).emit("match found", {
+        player: p2, opponent: id2, questions: questions, cap: cap, difficulty: difficulty
+    });
+    io.to(id2).emit("match found", {
+        player: p1, opponent: id1, questions: questions, cap: cap, difficulty: difficulty
+    });
+
+    var time = cap + 5;
+    var x = setInterval(function() {
+        io.to(id1).emit("tick", { time: time });
+        io.to(id2).emit("tick", { time: time });
+
+        if (id1 in games) {
+            games[id1].spectators.forEach(function(spectator) {
+                io.to(spectator).emit("tick", { time: time });
+            });
+        }
+
+        if (time <= 0) {
+            if (players[id1] && players[id2]) {
+                record_result(players[id1], players[id2]);
+            }
+            if (id1 in games) {
+                delete games[id1];
+                update_games();
+            }
+            clearInterval(x);
+        }
+
+        time--;
+    }, 1000);
 }
 
 server.listen(port, host, function() {
@@ -80,11 +146,30 @@ io.on("connection", function(socket) {
             question: "",
             score: "0",
             opponent: "-1",
+            cheated: false,
+            wantsRematch: false
         };
         update_players();
         socket.emit("login", {
             playerId: socket.id,
             player: players[socket.id]
+        });
+    }
+
+    // tell a former opponent that this player is gone (disables their rematch button)
+    function leave_pairing() {
+        var p = players[socket.id];
+        if (!p) return;
+        var opp = p.opponent;
+        if (opp !== "-1" && players[opp] && players[opp].opponent === socket.id) {
+            io.to(opp).emit("opponent left");
+        }
+    }
+
+    function remove_spectator() {
+        Object.keys(games).forEach(function(k) {
+            var i = games[k].spectators.indexOf(socket.id);
+            if (i !== -1) games[k].spectators.splice(i, 1);
         });
     }
 
@@ -94,6 +179,7 @@ io.on("connection", function(socket) {
         var difficulty = DIFFICULTIES.indexOf(info.difficulty) !== -1 ? info.difficulty : "medium";
         var name = String(info.name || "guest").slice(0, 20);
 
+        leave_pairing();
         add_player(name);
         challenges[socket.id] = { id: socket.id, name: name, cap: cap, difficulty: difficulty };
         socket.emit("challenge posted", { cap: cap, difficulty: difficulty });
@@ -124,59 +210,36 @@ io.on("connection", function(socket) {
         delete challenges[socket.id];
         update_challenges();
 
-        players[socket.id].opponent = key;
-        players[key].opponent = socket.id;
+        start_match(key, socket.id, challenge.cap, challenge.difficulty);
+    });
 
-        var cap = challenge.cap;
-        var difficulty = challenge.difficulty;
-        var questions = generate_questions(cap * 3, difficulty);
+    socket.on("rematch", function() {
+        var p = players[socket.id];
+        if (!p) return;
+        var opp = p.opponent;
+        if (opp === "-1" || !players[opp] || players[opp].opponent !== socket.id) {
+            socket.emit("opponent left");
+            return;
+        }
+        p.wantsRematch = true;
+        io.to(opp).emit("rematch requested");
+        if (players[opp].wantsRematch) {
+            start_match(socket.id, opp, p.matchCap || 120, p.matchDifficulty || "medium");
+        }
+    });
 
-        games[key] = {
-            name1: name,
-            name2: players[key].name,
-            id2: socket.id,
-            cap: cap,
-            difficulty: difficulty,
-            spectators: []
-        };
+    socket.on("main menu", function() {
+        leave_pairing();
+        delete challenges[socket.id];
+        if (socket.id in games) delete games[socket.id];
+        delete players[socket.id];
         update_games();
+        update_challenges();
+        update_players();
+    });
 
-        io.to(key).emit("match found", {
-            player: players[socket.id],
-            opponent: socket.id,
-            questions: questions,
-            cap: cap,
-            difficulty: difficulty
-        });
-
-        io.to(socket.id).emit("match found", {
-            player: players[key],
-            opponent: key,
-            questions: questions,
-            cap: cap,
-            difficulty: difficulty
-        });
-
-        var time = cap + 5;
-        var x = setInterval(function() {
-            if (time <= 0) {
-                if (socket.id in players && key in players) {
-                    record_result(players[socket.id], players[key]);
-                }
-                clearInterval(x);
-            }
-            io.to(key).emit("tick", { time: time });
-            io.to(socket.id).emit("tick", { time: time });
-
-            // update spectators as well
-            if (key in games) {
-                games[key].spectators.forEach(function(spectator) {
-                    io.to(spectator).emit("tick", { time: time });
-                });
-            }
-
-            time--;
-        }, 1000);
+    socket.on("stop spectate", function() {
+        remove_spectator();
     });
 
     socket.on("spectate", function(info) {
@@ -189,6 +252,8 @@ io.on("connection", function(socket) {
     });
 
     function disconnect() {
+        leave_pairing();
+        remove_spectator();
         delete challenges[socket.id];
         if (socket.id in games)
             delete games[socket.id];
@@ -206,25 +271,30 @@ io.on("connection", function(socket) {
         disconnect();
     });
 
-    socket.on("game end", function() {
-        disconnect();
-    });
-
     socket.on("update keyboard", function(keyboard) {
         if (!(socket.id in players)) return;
-        players[socket.id].text = keyboard["text"];
-        players[socket.id].question = keyboard["question"];
-        players[socket.id].score = keyboard["score"];
+        keyboard = keyboard || {};
+        var p = players[socket.id];
+        p.text = String(keyboard["text"] || "").slice(0, 20);
+        p.question = String(keyboard["question"] || "").slice(0, 40);
+
+        // anti-cheat: scores are capped; anything unrealistic is zeroed and flagged
+        var score = parseInt(keyboard["score"]);
+        if (isNaN(score) || score < 0 || score > MAX_SCORE) {
+            p.cheated = true;
+            score = 0;
+        }
+        p.score = String(score);
 
         socket.emit("update positions", { players: players });
-        socket.broadcast.to(players[socket.id].opponent).emit("update positions", { players: players });
+        socket.broadcast.to(p.opponent).emit("update positions", { players: players });
 
         if (socket.id in games) {
             games[socket.id].spectators.forEach(function(spectator) {
                 socket.broadcast.to(spectator).emit("update positions", { players: players });
             });
-        } else if (players[socket.id].opponent in games) {
-            games[players[socket.id].opponent].spectators.forEach(function(spectator) {
+        } else if (p.opponent in games) {
+            games[p.opponent].spectators.forEach(function(spectator) {
                 socket.broadcast.to(spectator).emit("update positions", { players: players });
             });
         }

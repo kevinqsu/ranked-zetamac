@@ -7,11 +7,13 @@ Created by Vel Kuppusamy, inspired by [Sunny Guan's zetamac-multiplayer](https:/
 ## Features
 
 - Challenge lobby: pressing Play posts an open challenge in the sidebar; anyone online can accept it to start the match
-- Match settings chosen by the challenger: time (60s / 120s / 240s) and difficulty (Easy / Medium / Hard, with ranges modeled on [QuantQuestions Arithmetic Zetamac](https://quantquestions.io/games/arithmetic-zetamac))
+- Match settings chosen by the challenger: time (30s / 60s / 120s) and difficulty (Easy / Medium / Hard, with ranges modeled on [QuantQuestions Arithmetic Zetamac](https://quantquestions.io/games/arithmetic-zetamac))
 - Live score graph with a hide/show toggle; the graph pops up automatically when the game ends
 - Spectator mode for ongoing games
 - Voice input via [annyang](https://github.com/TalAter/annyang)
 - Server-side high score persisted to a local file
+- Rematch (both players must accept), post-game main menu, and a stop-spectating button
+- Anti-cheat: the server rejects reported scores above 500 and excludes them from wins and high scores
 
 ## Difficulty ranges
 
