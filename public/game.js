@@ -111,6 +111,19 @@ function keypad_press(key) {
     inputEvent({});
 }
 
+// fire on touchstart (finger down) instead of click (finger up + browser delay),
+// so rapid taps register instantly; preventDefault stops the duplicate synthetic click
+keypad.querySelectorAll("button").forEach(function(btn) {
+    var press = function(e) {
+        e.preventDefault();
+        keypad_press(btn.getAttribute("data-key"));
+        btn.style.filter = "brightness(1.4)";
+        setTimeout(function() { btn.style.filter = ""; }, 80);
+    };
+    btn.addEventListener("touchstart", press, { passive: false });
+    btn.addEventListener("mousedown", press); // fallback for narrow desktop windows
+});
+
 //// settings UI
 
 function select_time(t) {
