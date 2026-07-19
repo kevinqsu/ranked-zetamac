@@ -14,21 +14,25 @@ var HIGHSCORE_FILE = path.join(__dirname, "highscore.json");
 
 var TIMES = [30, 60, 120];
 var DIFFICULTIES = ["easy", "medium", "hard"];
-var MAX_SCORE = 190; // any reported score above this is treated as cheating
+var MAX_SCORE = 500; // any reported score above this is treated as cheating
 
 var players = {};    // socket.id -> player state
 var games = {};      // "player 1" socket.id -> game info
 var challenges = {}; // challenger socket.id -> open challenge
 var online = 0;
 
-// high score persists in a local file; starts fresh if the file doesn't exist
-var highScore = { score: 0, player: null };
+// per-setting high scores ("cap:difficulty" -> {score, player}), persisted to a local file
+var highScores = {};
 try {
-    highScore = JSON.parse(fs.readFileSync(HIGHSCORE_FILE, "utf8"));
-} catch (e) { /* no high score yet */ }
+    var loaded = JSON.parse(fs.readFileSync(HIGHSCORE_FILE, "utf8"));
+    if (loaded && typeof loaded === "object") {
+        // migrate a legacy single high score into the default bracket
+        highScores = ("score" in loaded) ? { "120:medium": loaded } : loaded;
+    }
+} catch (e) { /* no high scores yet */ }
 
 function save_high_score() {
-    fs.writeFile(HIGHSCORE_FILE, JSON.stringify(highScore), function() {});
+    fs.writeFile(HIGHSCORE_FILE, JSON.stringify(highScores), function() {});
 }
 
 function update_players() {
@@ -46,18 +50,20 @@ function update_challenges() {
     io.emit("update challenges", { challenges: challenges });
 }
 
-function record_result(p1, p2) {
+function record_result(p1, p2, cap, difficulty) {
+    var key = cap + ":" + difficulty;
     var changed = false;
     [p1, p2].forEach(function(p) {
         var s = parseInt(p.score) || 0;
-        if (!p.cheated && s <= MAX_SCORE && s > (highScore.score || 0)) {
-            highScore = { score: s, player: p.name };
+        var current = highScores[key] || { score: 0, player: null };
+        if (!p.cheated && s <= MAX_SCORE && s > current.score) {
+            highScores[key] = { score: s, player: p.name };
             changed = true;
         }
     });
     if (changed) {
         save_high_score();
-        io.emit("highScore", highScore);
+        io.emit("highScore", highScores);
     }
 }
 
@@ -109,7 +115,7 @@ function start_match(id1, id2, cap, difficulty) {
 
         if (time <= 0) {
             if (players[id1] && players[id2]) {
-                record_result(players[id1], players[id2]);
+                record_result(players[id1], players[id2], cap, difficulty);
             }
             if (id1 in games) {
                 delete games[id1];
@@ -135,7 +141,7 @@ io.on("connection", function(socket) {
         update_players();
         update_games();
         update_challenges();
-        socket.emit("highScore", highScore);
+        socket.emit("highScore", highScores);
     });
 
     function add_player(name) {
@@ -246,7 +252,7 @@ io.on("connection", function(socket) {
         var id = (info || {}).id;
         if (id in games) {
             games[id].spectators.push(socket.id);
-            socket.emit("spectate started", { cap: games[id].cap });
+            socket.emit("spectate started", { cap: games[id].cap, difficulty: games[id].difficulty });
             socket.emit("update positions", { players: players });
         }
     });

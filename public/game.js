@@ -14,6 +14,8 @@ var question_id = 0;
 var games = {};
 var challenges = {};
 var cap = 120;
+var matchDifficulty = "medium"; // difficulty of the current match / spectated game
+var highScores = {};            // "cap:difficulty" -> {score, player}
 var opponentId = -1;
 var lastName = "guest";
 
@@ -138,6 +140,7 @@ function select_time(t) {
         el.classList.toggle("text-blue-600", !sel);
         el.classList.toggle("border-blue-300", !sel);
     });
+    update_high_score_display();
 }
 
 function select_diff(d) {
@@ -154,10 +157,26 @@ function select_diff(d) {
     var c = DIFF_META[d].color;
     diffInfo.className = "mt-2 text-sm text-center rounded-lg p-3 bg-" + c + "-50 text-" + c + "-700";
     diffInfo.textContent = DIFF_META[d].info;
+    update_high_score_display();
 }
 
 function diff_label(d) {
     return d.charAt(0).toUpperCase() + d.slice(1);
+}
+
+// show the high score for whatever time/difficulty is relevant right now:
+// menu = the settings being picked; in game / waiting / spectating = that game's settings
+function update_high_score_display() {
+    var inMenu = !startEl.classList.contains("hidden");
+    var t = inMenu ? settings.time : cap;
+    var d = inMenu ? settings.difficulty : matchDifficulty;
+    var hs = highScores[t + ":" + d];
+    var label = t + "s " + diff_label(d);
+    if (hs && hs.player) {
+        highScore.textContent = "High Score (" + label + "): " + hs.score + " by " + hs.player;
+    } else {
+        highScore.textContent = "High Score (" + label + "): —";
+    }
 }
 
 //// graph toggle
@@ -183,6 +202,7 @@ function show_start() {
     game.style.display = "none";
     startEl.classList.remove("hidden");
     hide_keypad();
+    update_high_score_display(); // back to menu: show the selected bracket again
 }
 
 function hide_end_buttons() {
@@ -381,19 +401,18 @@ socket.on("login", function(data) {
 });
 
 socket.on("highScore", function(data) {
-    if (data && data.player) {
-        highScore.textContent = "High Score: " + data.score + " by " + data.player;
-    } else {
-        highScore.textContent = "High Score: —";
-    }
+    highScores = data || {};
+    update_high_score_display();
 });
 
 socket.on("challenge posted", function(data) {
     cap = data.cap;
+    matchDifficulty = data.difficulty;
     reset_board();
     show_game();
     banner.textContent = "Waiting for someone to accept your challenge...";
     cancelBtn.style.display = "block";
+    update_high_score_display();
 });
 
 socket.on("challenge unavailable", function() {
@@ -402,6 +421,7 @@ socket.on("challenge unavailable", function() {
 
 socket.on("match found", function(data) {
     cap = data.cap;
+    matchDifficulty = data.difficulty;
     reset_board();
     show_game();
     cancelBtn.style.display = "none";
@@ -429,6 +449,8 @@ function spectate(id, id2) {
 
 socket.on("spectate started", function(data) {
     cap = data.cap;
+    matchDifficulty = data.difficulty;
+    update_high_score_display();
     reset_chart(cap);
     startEl.classList.add("hidden");
     game.style.display = "block";
