@@ -9,14 +9,39 @@
       rel="stylesheet"
     />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.1/chart.min.js" integrity="sha512-QSkVNOCYLtj73J4hbmVoOV6KVZuMluZlioC+trLpewV8qMjsWqlIQvkn1KGX2StWvPMdWGBqim1xlC8krl1EKQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <style>
+      #keypad, #keypad button {
+        touch-action: manipulation;
+        -webkit-user-select: none;
+        user-select: none;
+      }
+      @media (max-width: 639px) {
+        #sidebar.mobile-open {
+          display: flex;
+          position: fixed;
+          top: 0;
+          left: 0;
+          bottom: 0;
+          width: 18rem;
+          z-index: 50;
+          overflow-y: auto;
+          box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+        }
+        #game {
+          padding-bottom: 18rem; /* keep content clear of the on-screen keypad */
+        }
+      }
+    </style>
   </head>
   <body class="text-gray-700 h-screen flex flex-col">
-    <div class="w-full bg-indigo-300 px-8 py-4 flex shadow-lg">
+    <div class="w-full bg-indigo-300 px-4 md:px-8 py-4 flex items-center shadow-lg">
+      <button id="menu-btn" class="sm:hidden mr-3 text-2xl focus:outline-none" onclick="toggle_menu()">&#9776;</button>
       <div class="text-left text-xl md:text-2xl font-light flex-grow">Ranked Zetamac</div>
       <div class="text-right my-auto" id="online">0</div>
     </div>
     <div class="flex flex-grow">
       <div
+        id="sidebar"
         class="w-72 bg-blue-100 p-4 hidden sm:flex flex-col justify-between"
       >
         <div class="text-xl mb-2 text-center">Challenges</div>
@@ -27,6 +52,7 @@
           <div id="high-score"></div>
         </div>
       </div>
+      <div id="backdrop" class="hidden fixed inset-0 bg-black bg-opacity-40 z-40" onclick="close_menu()"></div>
       <div id="parent" class="flex flex-col w-full">
         <div id="start" class="flex flex-grow">
           <div class="m-auto w-full max-w-md flex flex-col gap-4 p-6">
@@ -119,7 +145,9 @@
     </div>
     <div class="bg-indigo-300 w-full px-4 py-2 text-center grid-cols-3 hidden md:grid">
       <div>
-        Inspired by
+        Created by
+        <a href="https://github.com/kevinqsu" target="_blank" class="underline text-blue-700">Vel Kuppusamy</a>,
+        inspired by
         <a href="https://github.com/sunnyguan/zetamac-multiplayer" target="_blank" class="underline text-blue-700">Sunny Guan</a>
       </div>
       <div>
@@ -129,6 +157,22 @@
       <div>
         Play single-player
         <a href="https://arithmetic.zetamac.com/" target="_blank" class="underline text-blue-700">Zetamac</a>
+      </div>
+    </div>
+    <div id="keypad" class="hidden sm:hidden fixed bottom-0 left-0 right-0 bg-gray-800 p-2 z-30">
+      <div class="grid grid-cols-3 gap-2 max-w-sm mx-auto">
+        <button class="bg-gray-600 text-white text-2xl py-3 rounded-lg" onclick="keypad_press('1')">1</button>
+        <button class="bg-gray-600 text-white text-2xl py-3 rounded-lg" onclick="keypad_press('2')">2</button>
+        <button class="bg-gray-600 text-white text-2xl py-3 rounded-lg" onclick="keypad_press('3')">3</button>
+        <button class="bg-gray-600 text-white text-2xl py-3 rounded-lg" onclick="keypad_press('4')">4</button>
+        <button class="bg-gray-600 text-white text-2xl py-3 rounded-lg" onclick="keypad_press('5')">5</button>
+        <button class="bg-gray-600 text-white text-2xl py-3 rounded-lg" onclick="keypad_press('6')">6</button>
+        <button class="bg-gray-600 text-white text-2xl py-3 rounded-lg" onclick="keypad_press('7')">7</button>
+        <button class="bg-gray-600 text-white text-2xl py-3 rounded-lg" onclick="keypad_press('8')">8</button>
+        <button class="bg-gray-600 text-white text-2xl py-3 rounded-lg" onclick="keypad_press('9')">9</button>
+        <div></div>
+        <button class="bg-gray-600 text-white text-2xl py-3 rounded-lg" onclick="keypad_press('0')">0</button>
+        <button class="bg-gray-700 text-white text-2xl py-3 rounded-lg" onclick="keypad_press('back')">&#9003;</button>
       </div>
     </div>
     <script src="/socket.io/socket.io.js"></script>

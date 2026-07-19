@@ -74,6 +74,43 @@ var graphWrap = document.getElementById("graph-wrap");
 var graphBtn = document.getElementById("toggle-graph");
 var graphHidden = false;
 
+var sidebar = document.getElementById("sidebar");
+var backdrop = document.getElementById("backdrop");
+var keypad = document.getElementById("keypad");
+
+//// mobile menu
+
+function toggle_menu() {
+    var open = !sidebar.classList.contains("mobile-open");
+    sidebar.classList.toggle("mobile-open", open);
+    backdrop.classList.toggle("hidden", !open);
+}
+
+function close_menu() {
+    sidebar.classList.remove("mobile-open");
+    backdrop.classList.add("hidden");
+}
+
+//// mobile keypad (only visible on small screens via CSS)
+
+function show_keypad() {
+    keypad.classList.remove("hidden");
+}
+
+function hide_keypad() {
+    keypad.classList.add("hidden");
+}
+
+function keypad_press(key) {
+    if (textbox1.readOnly) return;
+    if (key === "back") {
+        textbox1.value = textbox1.value.slice(0, -1);
+    } else {
+        textbox1.value += key;
+    }
+    inputEvent({});
+}
+
 //// settings UI
 
 function select_time(t) {
@@ -132,6 +169,7 @@ function show_game() {
 function show_start() {
     game.style.display = "none";
     startEl.classList.remove("hidden");
+    hide_keypad();
 }
 
 function hide_end_buttons() {
@@ -275,6 +313,7 @@ function accept_challenge(id) {
     playerName = name;
     lastName = name;
     spectating = -1;
+    close_menu();
     socket.emit("accept challenge", { id: id, name: name });
 }
 
@@ -382,6 +421,7 @@ socket.on("spectate started", function(data) {
     game.style.display = "block";
     textbox2.type = "text";
     leaveBtn.style.display = "block";
+    close_menu();
 });
 
 socket.on("rematch requested", function() {
@@ -461,8 +501,11 @@ socket.on("tick", function(data) {
         banner.textContent = "GO!";
     } else if (time === cap) {
         banner.textContent = time + "";
-        if (spectating !== 1) textbox1.readOnly = false;
-        if (spectating !== 1) new_question();
+        if (spectating !== 1) {
+            textbox1.readOnly = false;
+            show_keypad();
+            new_question();
+        }
     } else if (time <= 0) {
         var final_score1 = parseInt(score1.textContent);
         var final_score2 = parseInt(score2.textContent);
@@ -475,6 +518,7 @@ socket.on("tick", function(data) {
         }
 
         textbox1.readOnly = true;
+        hide_keypad();
         set_graph_hidden(false); // graph pops up when the game finishes
         if (spectating !== 1) {
             rematchBtn.style.display = "block";
