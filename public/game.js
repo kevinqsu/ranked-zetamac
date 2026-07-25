@@ -75,6 +75,7 @@ var highScore = document.getElementById("high-score");
 var graphWrap = document.getElementById("graph-wrap");
 var graphBtn = document.getElementById("toggle-graph");
 var graphHidden = false;
+var paceEl = document.getElementById("pace");
 
 var sidebar = document.getElementById("sidebar");
 var backdrop = document.getElementById("backdrop");
@@ -185,6 +186,10 @@ function set_graph_hidden(h) {
     graphHidden = h;
     graphWrap.style.display = h ? "none" : "block";
     graphBtn.textContent = h ? "Show graph" : "Hide graph";
+    if (!h) {
+        myChart.update(); // flush any pending points when revealed
+        chartDirty = false;
+    }
 }
 
 function toggle_graph() {
@@ -226,6 +231,7 @@ function reset_board() {
     question_id = 0;
     keyboard = { text: "", question: "", score: "0" };
     updatedLabels = false;
+    paceEl.textContent = "";
     reset_chart(cap);
 }
 
@@ -281,12 +287,41 @@ function reset_chart(newCap) {
 
 reset_chart(cap);
 
+// redrawing the chart on every keystroke echo causes input lag on phones,
+// so points just mark it dirty and it repaints at most twice a second
+var chartDirty = false;
+
+function chart_touch() {
+    chartDirty = true;
+}
+
+setInterval(function() {
+    if (chartDirty && !graphHidden) {
+        myChart.update();
+        chartDirty = false;
+    }
+}, 500);
+
 //// playing
 
 addEventListener("keydown", function(event) {
     if (event.keyCode === 13) {
         if (!startEl.classList.contains("hidden")) play();
         else if (newGame.style.display === "block") startGame();
+        return;
+    }
+    // if the answer box lost focus mid-game, typing still works:
+    // catch stray digits/backspace, refocus, and apply the key manually
+    if (!textbox1.readOnly && document.activeElement !== textbox1) {
+        if (/^\d$/.test(event.key)) {
+            event.preventDefault();
+            textbox1.focus();
+            keypad_press(event.key);
+        } else if (event.key === "Backspace") {
+            event.preventDefault();
+            textbox1.focus();
+            keypad_press("back");
+        }
     }
 });
 
@@ -528,8 +563,17 @@ socket.on("tick", function(data) {
         for (let i = 0; i < 2; i++) {
             myChart.data.datasets[i].data[cap - time] = myChart.data.datasets[i].data[cap - time - 1];
         }
-        myChart.update();
+        chart_touch();
     }
+
+    // projected final scores at the current rate
+    var elapsed = cap - time;
+    if (time < cap && time > 0 && elapsed >= 3) {
+        var proj1 = Math.round((parseInt(score1.textContent) || 0) / elapsed * cap);
+        var proj2 = Math.round((parseInt(score2.textContent) || 0) / elapsed * cap);
+        paceEl.textContent = "Projected: " + name1.textContent + " " + proj1 + " · " + name2.textContent + " " + proj2;
+    }
+
     if (time >= cap + 2) {
         banner.textContent = time - cap - 1 + "..";
     } else if (time === cap + 1) {
@@ -538,6 +582,9 @@ socket.on("tick", function(data) {
         banner.textContent = time + "";
         if (spectating !== 1) {
             textbox1.readOnly = false;
+            if (window.matchMedia("(min-width: 640px)").matches) {
+                textbox1.focus(); // desktop: type immediately, no click needed
+            }
             show_keypad();
             new_question();
         }
@@ -554,6 +601,7 @@ socket.on("tick", function(data) {
 
         textbox1.readOnly = true;
         hide_keypad();
+        paceEl.textContent = "";
         set_graph_hidden(false); // graph pops up when the game finishes
         if (spectating !== 1) {
             rematchBtn.style.display = "block";
@@ -605,7 +653,7 @@ function addPoint(pid, point) {
         updatedLabels = true;
     }
     myChart.data.datasets[pid].data[cap - time] = point;
-    myChart.update();
+    chart_touch();
 }
 
 //// init

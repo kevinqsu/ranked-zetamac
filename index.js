@@ -77,6 +77,8 @@ function start_match(id1, id2, cap, difficulty) {
         p.score = "0";
         p.cheated = false;
         p.wantsRematch = false;
+        p.inMatch = true;
+        p.disconnected = false;
         p.matchCap = cap;
         p.matchDifficulty = difficulty;
     });
@@ -117,6 +119,14 @@ function start_match(id1, id2, cap, difficulty) {
             if (players[id1] && players[id2]) {
                 record_result(players[id1], players[id2], cap, difficulty);
             }
+            // clean up players who closed the tab mid-game (their score still counted)
+            [id1, id2].forEach(function(id) {
+                if (players[id]) {
+                    players[id].inMatch = false;
+                    if (players[id].disconnected) delete players[id];
+                }
+            });
+            update_players();
             if (id1 in games) {
                 delete games[id1];
                 update_games();
@@ -153,7 +163,9 @@ io.on("connection", function(socket) {
             score: "0",
             opponent: "-1",
             cheated: false,
-            wantsRematch: false
+            wantsRematch: false,
+            inMatch: false,
+            disconnected: false
         };
         update_players();
         socket.emit("login", {
@@ -258,15 +270,25 @@ io.on("connection", function(socket) {
     });
 
     function disconnect() {
+        var p = players[socket.id];
         leave_pairing();
         remove_spectator();
         delete challenges[socket.id];
+        update_challenges();
+
+        if (p && p.inMatch) {
+            // mid-game: keep the player's state (frozen score) so the timer keeps
+            // running, spectators keep watching, and the result still counts;
+            // the match-end cleanup removes them
+            p.disconnected = true;
+            return;
+        }
+
         if (socket.id in games)
             delete games[socket.id];
-        if (players[socket.id])
-            delete games[players[socket.id].opponent];
+        if (p)
+            delete games[p.opponent];
         update_games();
-        update_challenges();
 
         delete players[socket.id];
         update_players();

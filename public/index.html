@@ -110,6 +110,8 @@
                   <input
                     id="text1"
                     readonly
+                    inputmode="numeric"
+                    autocomplete="off"
                     class="w-40 text-3xl text-center border-blue-400 py-2 px-4 bg-white rounded-lg placeholder-gray-400 text-gray-900 focus:outline-none border-2 focus:border-blue-600"
                   />
                 </div>
@@ -134,7 +136,8 @@
               </div>
             </div>
             <div class="mt-8 mx-auto w-2/3">
-              <div class="text-right mb-1">
+              <div class="flex justify-between items-center mb-1">
+                <div id="pace" class="text-sm text-gray-500"></div>
                 <button id="toggle-graph" onclick="toggle_graph()" class="px-3 py-1 text-sm bg-gray-200 rounded-md hover:bg-gray-300 shadow-sm">Hide graph</button>
               </div>
               <div id="graph-wrap"><canvas id="graph"></canvas></div>
