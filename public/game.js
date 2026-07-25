@@ -79,7 +79,18 @@ var paceEl = document.getElementById("pace");
 
 var sidebar = document.getElementById("sidebar");
 var backdrop = document.getElementById("backdrop");
-var keypad = document.getElementById("keypad");
+
+// true only while a game is running (between GO and the final tick);
+// typing into the answer box is ignored while false
+var gameActive = false;
+
+// unlock and focus the answer box during a tap/click (the only moment mobile
+// browsers allow the on-screen keyboard to open), so it's already up at GO
+function arm_answer_box() {
+    textbox1.readOnly = false;
+    textbox1.value = "";
+    textbox1.focus();
+}
 
 //// mobile menu
 
@@ -93,39 +104,6 @@ function close_menu() {
     sidebar.classList.remove("mobile-open");
     backdrop.classList.add("hidden");
 }
-
-//// mobile keypad (only visible on small screens via CSS)
-
-function show_keypad() {
-    keypad.classList.remove("hidden");
-}
-
-function hide_keypad() {
-    keypad.classList.add("hidden");
-}
-
-function keypad_press(key) {
-    if (textbox1.readOnly) return;
-    if (key === "back") {
-        textbox1.value = textbox1.value.slice(0, -1);
-    } else {
-        textbox1.value += key;
-    }
-    inputEvent({});
-}
-
-// fire on touchstart (finger down) instead of click (finger up + browser delay),
-// so rapid taps register instantly; preventDefault stops the duplicate synthetic click
-keypad.querySelectorAll("button").forEach(function(btn) {
-    var press = function(e) {
-        e.preventDefault();
-        keypad_press(btn.getAttribute("data-key"));
-        btn.style.filter = "brightness(1.4)";
-        setTimeout(function() { btn.style.filter = ""; }, 80);
-    };
-    btn.addEventListener("touchstart", press, { passive: false });
-    btn.addEventListener("mousedown", press); // fallback for narrow desktop windows
-});
 
 //// settings UI
 
@@ -185,6 +163,7 @@ function update_high_score_display() {
 function set_graph_hidden(h) {
     graphHidden = h;
     graphWrap.style.display = h ? "none" : "block";
+    paceEl.style.display = h ? "none" : "block";
     graphBtn.textContent = h ? "Show graph" : "Hide graph";
     if (!h) {
         myChart.update(); // flush any pending points when revealed
@@ -206,7 +185,7 @@ function show_game() {
 function show_start() {
     game.style.display = "none";
     startEl.classList.remove("hidden");
-    hide_keypad();
+    gameActive = false;
     update_high_score_display(); // back to menu: show the selected bracket again
 }
 
@@ -312,15 +291,17 @@ addEventListener("keydown", function(event) {
     }
     // if the answer box lost focus mid-game, typing still works:
     // catch stray digits/backspace, refocus, and apply the key manually
-    if (!textbox1.readOnly && document.activeElement !== textbox1) {
+    if (gameActive && document.activeElement !== textbox1) {
         if (/^\d$/.test(event.key)) {
             event.preventDefault();
             textbox1.focus();
-            keypad_press(event.key);
+            textbox1.value += event.key;
+            inputEvent({});
         } else if (event.key === "Backspace") {
             event.preventDefault();
             textbox1.focus();
-            keypad_press("back");
+            textbox1.value = textbox1.value.slice(0, -1);
+            inputEvent({});
         }
     }
 });
@@ -330,6 +311,7 @@ function play() {
     playerName = name;
     lastName = name;
     spectating = -1;
+    arm_answer_box();
     socket.emit("create challenge", {
         name: name,
         time: settings.time,
@@ -338,6 +320,7 @@ function play() {
 }
 
 var startGame = function() {
+    arm_answer_box();
     socket.emit("create challenge", {
         name: lastName,
         time: settings.time,
@@ -359,6 +342,7 @@ function main_menu() {
 }
 
 function request_rematch() {
+    arm_answer_box();
     socket.emit("rematch");
     rematchBtn.disabled = true;
     rematchBtn.textContent = "Rematch requested...";
@@ -370,7 +354,6 @@ function leave_spectate() {
     spec_id1 = -1;
     spec_id2 = -1;
     leaveBtn.style.display = "none";
-    textbox1.readOnly = true;
     show_start();
 }
 
@@ -382,6 +365,7 @@ function accept_challenge(id) {
     lastName = name;
     spectating = -1;
     close_menu();
+    arm_answer_box();
     socket.emit("accept challenge", { id: id, name: name });
 }
 
@@ -408,6 +392,11 @@ function check() {
 }
 
 function inputEvent(e) {
+    if (!gameActive) {
+        // keyboard is open early (during countdown / while waiting) — ignore typing
+        if (!textbox1.readOnly) textbox1.value = "";
+        return;
+    }
     if (playerName) {
         check();
         keyboard["text"] = textbox1.value;
@@ -487,6 +476,7 @@ socket.on("spectate started", function(data) {
     matchDifficulty = data.difficulty;
     update_high_score_display();
     reset_chart(cap);
+    textbox1.readOnly = true; // spectators can't type into the viewed player's box
     startEl.classList.add("hidden");
     game.style.display = "block";
     textbox2.type = "text";
@@ -582,10 +572,9 @@ socket.on("tick", function(data) {
         banner.textContent = time + "";
         if (spectating !== 1) {
             textbox1.readOnly = false;
-            if (window.matchMedia("(min-width: 640px)").matches) {
-                textbox1.focus(); // desktop: type immediately, no click needed
-            }
-            show_keypad();
+            textbox1.value = "";
+            gameActive = true;
+            textbox1.focus(); // keyboard is usually already up from the play/accept tap
             new_question();
         }
     } else if (time <= 0) {
@@ -599,8 +588,9 @@ socket.on("tick", function(data) {
             banner.textContent = "Tied game!";
         }
 
+        gameActive = false;
         textbox1.readOnly = true;
-        hide_keypad();
+        textbox1.blur(); // dismiss the mobile keyboard so the result and buttons are visible
         paceEl.textContent = "";
         set_graph_hidden(false); // graph pops up when the game finishes
         if (spectating !== 1) {

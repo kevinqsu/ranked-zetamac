@@ -10,11 +10,6 @@
     />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.1/chart.min.js" integrity="sha512-QSkVNOCYLtj73J4hbmVoOV6KVZuMluZlioC+trLpewV8qMjsWqlIQvkn1KGX2StWvPMdWGBqim1xlC8krl1EKQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <style>
-      #keypad, #keypad button {
-        touch-action: manipulation;
-        -webkit-user-select: none;
-        user-select: none;
-      }
       @media (max-width: 639px) {
         #sidebar.mobile-open {
           display: flex;
@@ -26,9 +21,6 @@
           z-index: 50;
           overflow-y: auto;
           box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
-        }
-        #game {
-          padding-bottom: 18rem; /* keep content clear of the on-screen keypad */
         }
       }
     </style>
@@ -158,22 +150,6 @@
       <div>
         Play single-player
         <a href="https://arithmetic.zetamac.com/" target="_blank" class="underline text-blue-700">Zetamac</a>
-      </div>
-    </div>
-    <div id="keypad" class="hidden sm:hidden fixed bottom-0 left-0 right-0 bg-gray-800 p-2 z-30">
-      <div class="grid grid-cols-3 gap-2 max-w-sm mx-auto">
-        <button class="bg-gray-600 text-white text-2xl py-3 rounded-lg" data-key="1">1</button>
-        <button class="bg-gray-600 text-white text-2xl py-3 rounded-lg" data-key="2">2</button>
-        <button class="bg-gray-600 text-white text-2xl py-3 rounded-lg" data-key="3">3</button>
-        <button class="bg-gray-600 text-white text-2xl py-3 rounded-lg" data-key="4">4</button>
-        <button class="bg-gray-600 text-white text-2xl py-3 rounded-lg" data-key="5">5</button>
-        <button class="bg-gray-600 text-white text-2xl py-3 rounded-lg" data-key="6">6</button>
-        <button class="bg-gray-600 text-white text-2xl py-3 rounded-lg" data-key="7">7</button>
-        <button class="bg-gray-600 text-white text-2xl py-3 rounded-lg" data-key="8">8</button>
-        <button class="bg-gray-600 text-white text-2xl py-3 rounded-lg" data-key="9">9</button>
-        <div></div>
-        <button class="bg-gray-600 text-white text-2xl py-3 rounded-lg" data-key="0">0</button>
-        <button class="bg-gray-700 text-white text-2xl py-3 rounded-lg" data-key="back">&#9003;</button>
       </div>
     </div>
     <script src="/socket.io/socket.io.js"></script>
