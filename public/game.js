@@ -99,6 +99,18 @@ function arm_answer_box() {
     textbox1.focus();
 }
 
+// tapping the box early (while waiting / during countdown) would otherwise focus
+// it silently while readonly — no keyboard — and the GO-time focus() then no-ops
+// because it's already focused. Unlock within the tap so the keyboard opens now.
+function unlock_on_tap() {
+    if (spectating === 1) return;                        // spectators stay locked
+    if (!startEl.classList.contains("hidden")) return;   // still on the menu
+    if (newGame.style.display === "block") return;       // game-over screen
+    textbox1.readOnly = false;
+}
+textbox1.addEventListener("touchstart", unlock_on_tap);
+textbox1.addEventListener("mousedown", unlock_on_tap);
+
 //// mobile menu
 
 function toggle_menu() {
