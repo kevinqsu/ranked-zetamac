@@ -340,10 +340,11 @@ function play() {
 }
 
 var startGame = function() {
+    // repost the settings of the game just played, not the main-menu selections
     socket.emit("create challenge", {
         name: lastName,
-        time: settings.time,
-        difficulty: settings.difficulty
+        time: cap,
+        difficulty: matchDifficulty
     });
 };
 
