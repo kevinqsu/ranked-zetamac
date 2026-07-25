@@ -84,6 +84,13 @@ var backdrop = document.getElementById("backdrop");
 // typing into the answer box is ignored while false
 var gameActive = false;
 
+// true when the opponent has already requested a rematch
+var opponentWantsRematch = false;
+
+function is_mobile() {
+    return window.matchMedia("(max-width: 639px)").matches;
+}
+
 // unlock and focus the answer box during a tap/click (the only moment mobile
 // browsers allow the on-screen keyboard to open), so it's already up at GO
 function arm_answer_box() {
@@ -195,6 +202,7 @@ function hide_end_buttons() {
     rematchBtn.style.display = "none";
     rematchBtn.disabled = false;
     rematchBtn.textContent = "Rematch";
+    opponentWantsRematch = false;
 }
 
 function reset_board() {
@@ -211,6 +219,7 @@ function reset_board() {
     keyboard = { text: "", question: "", score: "0" };
     updatedLabels = false;
     paceEl.textContent = "";
+    set_graph_hidden(is_mobile()); // graph starts hidden on phones to reduce clutter
     reset_chart(cap);
 }
 
@@ -311,7 +320,6 @@ function play() {
     playerName = name;
     lastName = name;
     spectating = -1;
-    arm_answer_box();
     socket.emit("create challenge", {
         name: name,
         time: settings.time,
@@ -320,7 +328,6 @@ function play() {
 }
 
 var startGame = function() {
-    arm_answer_box();
     socket.emit("create challenge", {
         name: lastName,
         time: settings.time,
@@ -342,7 +349,9 @@ function main_menu() {
 }
 
 function request_rematch() {
-    arm_answer_box();
+    // only open the keyboard if this press starts the match right away
+    // (opponent already offered); just offering shouldn't summon it
+    if (opponentWantsRematch) arm_answer_box();
     socket.emit("rematch");
     rematchBtn.disabled = true;
     rematchBtn.textContent = "Rematch requested...";
@@ -359,12 +368,17 @@ function leave_spectate() {
 
 function accept_challenge(id) {
     if (spectating === 1) return;
-    if (startEl.classList.contains("hidden")) return; // already waiting or playing
-    var name = playerInput.value.trim() || "Guest";
+    var onMenu = !startEl.classList.contains("hidden");
+    var postGame = newGame.style.display === "block";
+    if (!onMenu && !postGame) return; // mid-game or waiting on a posted challenge
+    var name = playerInput.value.trim() || lastName || "Guest";
     playerName = name;
     lastName = name;
     spectating = -1;
     close_menu();
+    hide_end_buttons();
+    show_game(); // the answer box must be visible for focus to open the keyboard
+    banner.textContent = "Joining game...";
     arm_answer_box();
     socket.emit("accept challenge", { id: id, name: name });
 }
@@ -440,6 +454,7 @@ socket.on("challenge posted", function(data) {
 });
 
 socket.on("challenge unavailable", function() {
+    show_start();
     alert("That challenge is no longer available.");
 });
 
@@ -485,12 +500,14 @@ socket.on("spectate started", function(data) {
 });
 
 socket.on("rematch requested", function() {
+    opponentWantsRematch = true;
     if (!rematchBtn.disabled) {
         rematchBtn.textContent = "Rematch? (opponent is ready)";
     }
 });
 
 socket.on("opponent left", function() {
+    opponentWantsRematch = false;
     rematchBtn.disabled = true;
     rematchBtn.textContent = "Opponent left";
 });
@@ -574,8 +591,14 @@ socket.on("tick", function(data) {
             textbox1.readOnly = false;
             textbox1.value = "";
             gameActive = true;
-            textbox1.focus(); // keyboard is usually already up from the play/accept tap
+            textbox1.focus(); // keyboard is usually already up from the accept tap
             new_question();
+            if (is_mobile()) {
+                // center the timer, own score, and problem above the keyboard
+                setTimeout(function() {
+                    banner.scrollIntoView({ behavior: "smooth", block: "start" });
+                }, 100);
+            }
         }
     } else if (time <= 0) {
         var final_score1 = parseInt(score1.textContent);

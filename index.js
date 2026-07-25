@@ -222,6 +222,7 @@ io.on("connection", function(socket) {
         }
 
         var name = String(info.name || "guest").slice(0, 20);
+        leave_pairing(); // accepting right after a game: tell the old opponent
         add_player(name);
 
         delete challenges[key];
