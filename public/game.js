@@ -474,6 +474,9 @@ socket.on("challenge unavailable", function() {
 socket.on("match found", function(data) {
     cap = data.cap;
     matchDifficulty = data.difficulty;
+    // sync the menu pickers (and the high score display) to the game being played
+    select_time(cap);
+    select_diff(matchDifficulty);
     reset_board();
     show_game();
     cancelBtn.style.display = "none";
