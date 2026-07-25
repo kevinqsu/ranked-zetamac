@@ -195,7 +195,7 @@ io.on("connection", function(socket) {
         info = info || {};
         var cap = TIMES.indexOf(parseInt(info.time)) !== -1 ? parseInt(info.time) : 120;
         var difficulty = DIFFICULTIES.indexOf(info.difficulty) !== -1 ? info.difficulty : "medium";
-        var name = String(info.name || "guest").slice(0, 20);
+        var name = String(info.name || "Guest").slice(0, 20);
 
         leave_pairing();
         add_player(name);
@@ -221,7 +221,7 @@ io.on("connection", function(socket) {
             return;
         }
 
-        var name = String(info.name || "guest").slice(0, 20);
+        var name = String(info.name || "Guest").slice(0, 20);
         leave_pairing(); // accepting right after a game: tell the old opponent
         add_player(name);
 

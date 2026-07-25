@@ -17,7 +17,7 @@ var cap = 120;
 var matchDifficulty = "medium"; // difficulty of the current match / spectated game
 var highScores = {};            // "cap:difficulty" -> {score, player}
 var opponentId = -1;
-var lastName = "guest";
+var lastName = "Guest";
 
 // pre-match settings (challenger's settings are used for the match)
 var settings = { time: 120, difficulty: "medium" };
