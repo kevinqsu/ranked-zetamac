@@ -192,6 +192,16 @@ function set_graph_hidden(h) {
 
 function toggle_graph() {
     set_graph_hidden(!graphHidden);
+    // remember the manual choice for future games (end-of-game auto-reveal doesn't count)
+    try { localStorage.setItem("graphHidden", graphHidden ? "1" : "0"); } catch (e) {}
+}
+
+function default_graph_hidden() {
+    try {
+        var pref = localStorage.getItem("graphHidden");
+        if (pref !== null) return pref === "1";
+    } catch (e) {}
+    return is_mobile();
 }
 
 //// screens
@@ -231,7 +241,7 @@ function reset_board() {
     keyboard = { text: "", question: "", score: "0" };
     updatedLabels = false;
     paceEl.textContent = "";
-    set_graph_hidden(is_mobile()); // graph starts hidden on phones to reduce clutter
+    set_graph_hidden(default_graph_hidden()); // remembered preference, else hidden on phones
     reset_chart(cap);
 }
 
