@@ -87,6 +87,36 @@ var gameActive = false;
 // true when the opponent has already requested a rematch
 var opponentWantsRematch = false;
 
+// connection watchdog state: server ticks arrive every second during a match,
+// so a gap means this client's connection stalled (even if the socket hasn't
+// noticed yet — socket.io can take ~45s to declare a disconnect)
+var inMatch = false;
+var connLost = false;
+var lastTickAt = 0;
+var everConnected = false;
+
+var noticeEl = document.getElementById("notice");
+var noticeTimer = null;
+
+function show_notice(msg) {
+    noticeEl.textContent = msg;
+    noticeEl.classList.remove("hidden");
+    clearTimeout(noticeTimer);
+    noticeTimer = setTimeout(function() { noticeEl.classList.add("hidden"); }, 8000);
+}
+
+function connection_warning() {
+    connLost = true;
+    banner.textContent = "⚠ Connection lost — reconnecting...";
+    if (spectating !== 1) textbox1.readOnly = true; // pause input so it's noticed
+}
+
+setInterval(function() {
+    if (inMatch && !connLost && lastTickAt && Date.now() - lastTickAt > 4000) {
+        connection_warning();
+    }
+}, 1000);
+
 function is_mobile() {
     return window.matchMedia("(max-width: 639px)").matches;
 }
@@ -215,6 +245,8 @@ function show_start() {
     game.style.display = "none";
     startEl.classList.remove("hidden");
     gameActive = false;
+    inMatch = false;
+    connLost = false;
     update_high_score_display(); // back to menu: show the selected bracket again
 }
 
@@ -487,6 +519,9 @@ socket.on("match found", function(data) {
     // sync the menu pickers (and the high score display) to the game being played
     select_time(cap);
     select_diff(matchDifficulty);
+    inMatch = true;
+    connLost = false;
+    lastTickAt = Date.now();
     reset_board();
     show_game();
     cancelBtn.style.display = "none";
@@ -522,6 +557,9 @@ socket.on("spectate started", function(data) {
     game.style.display = "block";
     textbox2.type = "text";
     leaveBtn.style.display = "block";
+    inMatch = true;
+    connLost = false;
+    lastTickAt = Date.now();
     close_menu();
 });
 
@@ -591,6 +629,12 @@ socket.on("new player", function(data) {
 let time = 0;
 
 socket.on("tick", function(data) {
+    lastTickAt = Date.now();
+    if (connLost) {
+        // the stall recovered without a full disconnect — resume seamlessly
+        connLost = false;
+        if (spectating !== 1 && gameActive) textbox1.readOnly = false;
+    }
     time = data.time;
     if (time < cap && time >= 0) {
         for (let i = 0; i < 2; i++) {
@@ -638,6 +682,7 @@ socket.on("tick", function(data) {
         }
 
         gameActive = false;
+        inMatch = false;
         textbox1.readOnly = true;
         textbox1.blur(); // dismiss the mobile keyboard so the result and buttons are visible
         paceEl.textContent = "";
@@ -694,6 +739,38 @@ function addPoint(pid, point) {
     myChart.data.datasets[pid].data[cap - time] = point;
     chart_touch();
 }
+
+//// connection lifecycle
+
+socket.on("disconnect", function() {
+    if (inMatch) connection_warning();
+});
+
+socket.on("connect", function() {
+    if (!everConnected) {
+        everConnected = true;
+        return;
+    }
+    // reconnected with a fresh socket id: the server no longer knows this
+    // player, so any in-progress game, challenge, or spectate is over
+    socket.emit("enter");
+    var wasWaiting = cancelBtn.style.display === "block";
+    if (inMatch || wasWaiting || spectating === 1) {
+        connLost = false;
+        inMatch = false;
+        gameActive = false;
+        spectating = 0;
+        spec_id1 = -1;
+        spec_id2 = -1;
+        opponentId = -1;
+        cancelBtn.style.display = "none";
+        leaveBtn.style.display = "none";
+        hide_end_buttons();
+        textbox1.readOnly = true;
+        show_start();
+        show_notice("Connection dropped — that game is over on this device (your last synced score still counts). Post or accept a new challenge.");
+    }
+});
 
 //// init
 

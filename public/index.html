@@ -4,6 +4,9 @@
     <title>Ranked Zetamac</title>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link
       href="https://unpkg.com/tailwindcss@^2/dist/tailwind.min.css"
       rel="stylesheet"
@@ -48,6 +51,7 @@
       <div id="parent" class="flex flex-col w-full">
         <div id="start" class="flex flex-grow">
           <div class="m-auto w-full max-w-md flex flex-col gap-4 p-6">
+            <div id="notice" class="hidden text-center text-sm bg-red-100 text-red-700 rounded-lg p-3"></div>
             <input
               id="player"
               class="border-blue-400 py-2 px-4 bg-white rounded-lg placeholder-gray-400 text-gray-900 focus:outline-none border-2 focus:border-blue-600"
@@ -140,7 +144,9 @@
     </div>
     <div class="bg-indigo-300 w-full px-4 py-2 text-center grid-cols-3 hidden md:grid">
       <div>
-        Inspired by
+        Created by
+        <a href="https://github.com/kevinqsu" target="_blank" class="underline text-blue-700">Vel Kuppusamy</a>,
+        inspired by
         <a href="https://github.com/sunnyguan/zetamac-multiplayer" target="_blank" class="underline text-blue-700">Sunny Guan</a>
       </div>
       <div>
