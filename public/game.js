@@ -247,7 +247,37 @@ function show_start() {
     gameActive = false;
     inMatch = false;
     connLost = false;
+    spectating = 0; // back at the menu: spectating and accepting are allowed again
+    spec_id1 = -1;
+    spec_id2 = -1;
+    opponentId = -1;
+    leaveBtn.style.display = "none";
+    cancelBtn.style.display = "none";
     update_high_score_display(); // back to menu: show the selected bracket again
+}
+
+// leave whatever post-game / spectating state we're in so a new game can start
+function leave_current_state() {
+    if (spectating === 1) {
+        socket.emit("stop spectate");
+        spectating = 0;
+        spec_id1 = -1;
+        spec_id2 = -1;
+        leaveBtn.style.display = "none";
+    }
+    if (newGame.style.display === "block") {
+        socket.emit("main menu"); // drop the finished pairing server-side
+        hide_end_buttons();
+        opponentId = -1;
+    }
+}
+
+// can a new game / spectate be started from the current screen?
+function can_join_new() {
+    var onMenu = !startEl.classList.contains("hidden");
+    var postGame = newGame.style.display === "block";
+    var spectatingNow = spectating === 1;
+    return onMenu || postGame || spectatingNow;
 }
 
 function hide_end_buttons() {
@@ -422,10 +452,8 @@ function leave_spectate() {
 }
 
 function accept_challenge(id) {
-    if (spectating === 1) return;
-    var onMenu = !startEl.classList.contains("hidden");
-    var postGame = newGame.style.display === "block";
-    if (!onMenu && !postGame) return; // mid-game or waiting on a posted challenge
+    if (!can_join_new()) return; // mid-game or waiting on a posted challenge
+    leave_current_state();
     var name = playerInput.value.trim() || lastName || "Guest";
     playerName = name;
     lastName = name;
@@ -539,19 +567,26 @@ function createElementFromHTML(htmlString) {
 }
 
 function spectate(id, id2) {
-    if (spectating === 0) {
-        socket.emit("spectate", { id: id });
-        spec_id1 = id;
-        spec_id2 = id2;
-        spectating = 1;
-    }
+    if (!can_join_new()) return; // mid-game or waiting on a posted challenge
+    if (spectating === 1 && id === spec_id1) return; // already watching this one
+    leave_current_state();
+    socket.emit("spectate", { id: id });
+    spec_id1 = id;
+    spec_id2 = id2;
+    spectating = 1;
 }
+
+socket.on("spectate unavailable", function() {
+    // the game ended between the click and the server seeing it
+    show_start();
+    show_notice("That game just ended.");
+});
 
 socket.on("spectate started", function(data) {
     cap = data.cap;
     matchDifficulty = data.difficulty;
-    update_high_score_display();
-    reset_chart(cap);
+    reset_board(); // clear anything left over from a previous game
+    banner.textContent = "Spectating...";
     textbox1.readOnly = true; // spectators can't type into the viewed player's box
     startEl.classList.add("hidden");
     game.style.display = "block";
@@ -560,6 +595,7 @@ socket.on("spectate started", function(data) {
     inMatch = true;
     connLost = false;
     lastTickAt = Date.now();
+    update_high_score_display();
     close_menu();
 });
 

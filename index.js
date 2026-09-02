@@ -198,6 +198,7 @@ io.on("connection", function(socket) {
         var name = String(info.name || "Guest").slice(0, 20);
 
         leave_pairing();
+        remove_spectator();
         add_player(name);
         challenges[socket.id] = { id: socket.id, name: name, cap: cap, difficulty: difficulty };
         socket.emit("challenge posted", { cap: cap, difficulty: difficulty });
@@ -223,6 +224,7 @@ io.on("connection", function(socket) {
 
         var name = String(info.name || "Guest").slice(0, 20);
         leave_pairing(); // accepting right after a game: tell the old opponent
+        remove_spectator(); // accepting while spectating
         add_player(name);
 
         delete challenges[key];
@@ -263,11 +265,23 @@ io.on("connection", function(socket) {
 
     socket.on("spectate", function(info) {
         var id = (info || {}).id;
-        if (id in games) {
-            games[id].spectators.push(socket.id);
-            socket.emit("spectate started", { cap: games[id].cap, difficulty: games[id].difficulty });
-            socket.emit("update positions", { players: players });
+        if (!(id in games)) {
+            socket.emit("spectate unavailable");
+            return;
         }
+        // a finished/idle player who starts spectating is no longer "in game"
+        var p = players[socket.id];
+        if (p && !p.inMatch) {
+            leave_pairing();
+            delete challenges[socket.id];
+            delete players[socket.id];
+            update_challenges();
+            update_players();
+        }
+        remove_spectator(); // switching from another game
+        games[id].spectators.push(socket.id);
+        socket.emit("spectate started", { cap: games[id].cap, difficulty: games[id].difficulty });
+        socket.emit("update positions", { players: players });
     });
 
     function disconnect() {
