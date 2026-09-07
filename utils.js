@@ -1,5 +1,5 @@
 const DIFFICULTY_RANGES = {
-    easy:   { add: [1, 20],  sub: [1, 20],  mult1: [1, 12], mult2: [1, 12] },
+    easy:   { add: [2, 20],  sub: [2, 20],  mult1: [2, 12], mult2: [2, 12] },
     medium: { add: [2, 100], sub: [2, 100], mult1: [2, 12], mult2: [2, 100] },
     hard:   { add: [2, 300], sub: [2, 300], mult1: [2, 20], mult2: [2, 200] }
 };

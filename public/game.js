@@ -26,7 +26,7 @@ var TIME_OPTS = [30, 60, 120];
 var DIFF_META = {
     easy: {
         color: "green",
-        info: "Addition: (1–20) · Subtraction: (1–20) · Multiplication: (1–12)×(1–12) · Division: reverse multiplication"
+        info: "Addition: (2–20) · Subtraction: (2–20) · Multiplication: (2–12)×(2–12) · Division: reverse multiplication"
     },
     medium: {
         color: "yellow",
